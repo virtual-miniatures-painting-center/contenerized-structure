@@ -1,0 +1,67 @@
+version: '3.6'
+
+services:
+
+  database:
+    container_name: vmpc-db
+    image: mysql:latest
+    restart: 'on-failure'
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - 3306:3306
+    volumes:
+      - ${MYSQL_DATABASE_PATH}:/var/lib/mysql
+    networks:
+      vmpc:
+        ipv4_address: 172.30.30.10
+
+  api:
+    container_name: vmpc-api
+    image: vmpc-api
+    build:
+      dockerfile: ${API_SRC_PATH}/docker/Dockerfile
+      context: ${API_SRC_PATH}
+      args:
+        - NODE_ENV=${NODE_ENV}
+    env_file:
+      - ${API_SRC_PATH}/docker/.env
+    volumes:
+      - ${API_SRC_PATH}:/opt/app:delegated
+      - /opt/app/node_modules
+    ports:
+      - 3000:3000
+      - 19229:9229
+    networks:
+      vmpc:
+        ipv4_address: 172.30.30.20
+
+  frontend:
+    container_name: vmpc-app
+    image: frontend:latest
+    build:
+      dockerfile: ${FRONTEND_SRC_PATH}/docker/Dockerfile
+      context: ${FRONTEND_SRC_PATH}
+      args:
+        - NODE_ENV=development
+    env_file:
+      - ${API_SRC_PATH}/docker/.env
+    volumes:
+      - ${FRONTEND_SRC_PATH}:/opt/app
+    ports:
+      - 80:4200
+      - 49153:49153
+    networks:
+      vmpc:
+        ipv4_address: 172.30.30.30
+
+networks:
+  vmpc:
+    driver: bridge
+    name: vmpc_network
+    ipam:
+      config:
+        - subnet: 172.30.30.0/24
